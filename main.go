@@ -1,24 +1,18 @@
 package main
 
 import (
-	"fmt"
-
+	"github.com/SomtoJF/go-rod/common"
+	"github.com/SomtoJF/go-rod/endpoints/fake"
 	"github.com/SomtoJF/go-rod/initializers/fs"
-	"github.com/go-rod/rod"
 )
 
 func main() {
 	fs := fs.NewTemporaryFilesystem()
 	defer fs.Cleanup()
 
-	browser := rod.New().MustConnect().NoDefaultDevice()
-	page := browser.MustPage("https://www.wikipedia.org/").MustWindowFullscreen()
+	dependencies := common.MakeDependencies(fs)
 
-	page.MustElement("#searchInput").MustInput("earth")
-	page.MustElement("#search-form > fieldset > button").MustClick()
+	endpoint := fake.NewFakeEndpoint(dependencies.BrowserFactory, fs)
+	endpoint.GetPageAccessibilityTree()
 
-	screenshotPath := fs.ConcatenatePath("b.png")
-
-	page.MustWaitStable().MustScreenshot(screenshotPath)
-	fmt.Println(screenshotPath)
 }
