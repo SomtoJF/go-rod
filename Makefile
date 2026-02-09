@@ -1,3 +1,6 @@
+run-debug:
+	go run main.go -rod=show,slow=1s,trace
+
 run:
 	go run main.go
 
@@ -7,7 +10,4 @@ build:
 run-build:
 	./main
 
-clean:
-	rm main
-
-.PHONY: run build run-build clean
+.PHONY: run build run-build run-debug
