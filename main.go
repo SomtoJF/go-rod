@@ -17,6 +17,8 @@ func main() {
 	page.MustElement("#searchInput").MustInput("earth")
 	page.MustElement("#search-form > fieldset > button").MustClick()
 
-	page.MustWaitStable().MustScreenshot(fs.GetBasePath() + "/b.png")
-	fmt.Println(fs.GetBasePath() + "/b.png")
+	screenshotPath := fs.ConcatenatePath("b.png")
+
+	page.MustWaitStable().MustScreenshot(screenshotPath)
+	fmt.Println(screenshotPath)
 }

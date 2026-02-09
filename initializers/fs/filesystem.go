@@ -29,6 +29,10 @@ func (t *TemporaryFileSystem) CreateFile(fileName string) string {
 	return filePath
 }
 
+func (t *TemporaryFileSystem) ConcatenatePath(fileName string) string {
+	return filepath.Join(t.basePath, fileName)
+}
+
 func (t *TemporaryFileSystem) Cleanup() {
 	os.RemoveAll(t.basePath)
 }
