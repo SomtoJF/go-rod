@@ -8,5 +8,11 @@ import (
 type BrowserClient interface {
 	GetBrowser() *rod.Browser
 	GetPageAccessibilityTree(*rod.Page) ([]*proto.AccessibilityAXNode, error)
-	ScreenshotForLLM(*rod.Page, string) (string, error)
+	ScreenshotForLLM(*rod.Page, string) (string, []*TaggedAccessibilityNode, error)
+}
+
+type TaggedAccessibilityNode struct {
+	Node   *proto.AccessibilityAXNode
+	Bounds *proto.DOMRect
+	Index  int
 }

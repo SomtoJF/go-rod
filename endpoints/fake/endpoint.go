@@ -38,7 +38,7 @@ func (e *Endpoint) GetPageAccessibilityTree() ([]*proto.AccessibilityAXNode, err
 	return accessibilityTree, nil
 }
 
-func (e *Endpoint) ScreenshotForLLM() (string, error) {
+func (e *Endpoint) ScreenshotForLLM() (string, []*browserfactory.TaggedAccessibilityNode, error) {
 	b := e.browser
 	page := b.MustPage("https://www.wikipedia.org/").MustWindowFullscreen()
 

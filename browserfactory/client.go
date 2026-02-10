@@ -1,6 +1,8 @@
 package browserfactory
 
 import (
+	"strings"
+
 	"github.com/SomtoJF/go-rod/initializers/fs"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
@@ -30,8 +32,10 @@ func (b *BrowserFactory) GetPageAccessibilityTree(page *rod.Page) ([]*proto.Acce
 	return res.Nodes, nil
 }
 
-func (b *BrowserFactory) ScreenshotForLLM(page *rod.Page, fileName string) (string, error) {
+func (b *BrowserFactory) ScreenshotForLLM(page *rod.Page, fileName string) (string, []*TaggedAccessibilityNode, error) {
 	screenshotPath := b.fs.ConcatenatePath(fileName)
+
+	var taggedNodes []*TaggedAccessibilityNode
 
 	err := rod.Try(func() {
 		page.MustWaitStable()
@@ -39,34 +43,38 @@ func (b *BrowserFactory) ScreenshotForLLM(page *rod.Page, fileName string) (stri
 		accessibilityTree, _ := b.GetPageAccessibilityTree(page)
 
 		// Draw transparent grid lines over the page
-		page.MustEval(`() => {
-			const canvas = document.createElement('canvas');
-			canvas.id = 'agent-grid';
-			canvas.style = 'position:fixed; top:0; left:0; pointer-events:none; z-index:9999;';
-			canvas.width = window.innerWidth;
-			canvas.height = window.innerHeight;
-			const ctx = canvas.getContext('2d');
-			ctx.strokeStyle = 'rgba(255, 0, 0, 0.2)'; // Faint red lines
-			// Draw horizontal/vertical lines every 100px
-			for(let i=0; i<canvas.width; i+=100) { ctx.strokeRect(i, 0, 0, canvas.height); }
-			for(let i=0; i<canvas.height; i+=100) { ctx.strokeRect(0, i, canvas.width, 0); }
-			document.body.appendChild(canvas);
-		}`)
+		drawTransparentGrid(page)
 
-		tagAccessibilityNodes(page, accessibilityTree)
+		taggedNodes = tagAccessibilityNodes(page, accessibilityTree)
 
 		page.MustScreenshot(screenshotPath)
 
 	})
 
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	return screenshotPath, nil
+	return screenshotPath, taggedNodes, nil
 }
 
-func tagAccessibilityNodes(page *rod.Page, accessibilityTree []*proto.AccessibilityAXNode) {
+func drawTransparentGrid(page *rod.Page) {
+	page.MustEval(`() => {
+		const canvas = document.createElement('canvas');
+		canvas.id = 'agent-grid';
+		canvas.style = 'position:fixed; top:0; left:0; pointer-events:none; z-index:9999;';
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight;
+		const ctx = canvas.getContext('2d');
+		ctx.strokeStyle = 'rgba(255, 0, 0, 0.2)'; // Faint red lines
+		// Draw horizontal/vertical lines every 100px
+		for(let i=0; i<canvas.width; i+=100) { ctx.strokeRect(i, 0, 0, canvas.height); }
+		for(let i=0; i<canvas.height; i+=100) { ctx.strokeRect(0, i, canvas.width, 0); }
+		document.body.appendChild(canvas);
+	}`)
+}
+
+func tagAccessibilityNodes(page *rod.Page, accessibilityTree []*proto.AccessibilityAXNode) []*TaggedAccessibilityNode {
 	// Filter for focusable nodes with valid BackendDOMNodeID
 	var focusableNodes []*proto.AccessibilityAXNode
 	for _, node := range accessibilityTree {
@@ -74,6 +82,8 @@ func tagAccessibilityNodes(page *rod.Page, accessibilityTree []*proto.Accessibil
 			focusableNodes = append(focusableNodes, node)
 		}
 	}
+
+	var taggedNodes []*TaggedAccessibilityNode
 
 	// Inject tagging script for each focusable element
 	for i, node := range focusableNodes {
@@ -98,21 +108,53 @@ func tagAccessibilityNodes(page *rod.Page, accessibilityTree []*proto.Accessibil
 				document.body.appendChild(tag);
 			}`, bounds.X, bounds.Y, bounds.Width, bounds.Height, i)
 		}
+
+		taggedNodes = append(taggedNodes, &TaggedAccessibilityNode{
+			Node:   node,
+			Bounds: bounds,
+			Index:  i,
+		})
 	}
+
+	return taggedNodes
 }
 
-// isFocusable checks if node has focusable property set to true
+// isFocusable checks if node has focusable property or interactive role
 func isFocusable(node *proto.AccessibilityAXNode) bool {
-	if node.Properties == nil {
-		return false
-	}
-	for _, prop := range node.Properties {
-		if prop.Name == "focusable" && prop.Value != nil {
-			if prop.Value.Type == proto.AccessibilityAXValueTypeBoolean && prop.Value.Value.String() == "true" {
-				return true
+	// Check focusable property first
+	if node.Properties != nil {
+		for _, prop := range node.Properties {
+			if prop.Name == "focusable" && prop.Value != nil {
+				if prop.Value.Value.Bool() {
+					return true
+				}
 			}
 		}
 	}
+
+	// Fallback: check for interactive role
+	if node.Role != nil && !node.Role.Value.Nil() {
+		roleValue := strings.ToLower(node.Role.Value.String())
+		interactiveRoles := map[string]bool{
+			"button":    true,
+			"link":      true,
+			"textbox":   true,
+			"checkbox":  true,
+			"radio":     true,
+			"combobox":  true,
+			"menuitem":  true,
+			"searchbox": true,
+			"switch":    true,
+			"slider":    true,
+			"tab":       true,
+			"option":    true,
+			"select":    true,
+			"textarea":  true,
+			"input":     true,
+		}
+		return interactiveRoles[roleValue]
+	}
+
 	return false
 }
 
@@ -131,8 +173,8 @@ func getNodeBounds(page *rod.Page, node *proto.AccessibilityAXNode) *proto.DOMRe
 	x := res.Model.Border[0]
 	y := res.Model.Border[1]
 	// Calculate width/height from quad points
-	width := res.Model.Border[2] - res.Model.Border[0]   // x2 - x1
-	height := res.Model.Border[5] - res.Model.Border[1]  // y3 - y1
+	width := res.Model.Border[2] - res.Model.Border[0]  // x2 - x1
+	height := res.Model.Border[5] - res.Model.Border[1] // y3 - y1
 
 	return &proto.DOMRect{
 		X:      x,
