@@ -124,15 +124,15 @@ func tagAccessibilityNodes(page *rod.Page, accessibilityTree []*proto.Accessibil
 // isFocusable checks if node has focusable property or interactive role
 func isFocusable(node *proto.AccessibilityAXNode) bool {
 	// Check focusable property first
-	if node.Properties != nil {
-		for _, prop := range node.Properties {
-			if prop.Name == "focusable" && prop.Value != nil {
-				if prop.Value.Value.Bool() {
-					return true
-				}
-			}
-		}
-	}
+	// if node.Properties != nil {
+	// 	for _, prop := range node.Properties {
+	// 		if prop.Name == "focusable" && prop.Value != nil {
+	// 			if prop.Value.Value.Bool() {
+	// 				return true
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	interactiveRoles := map[string]bool{
 		"button":    true,

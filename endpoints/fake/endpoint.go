@@ -40,7 +40,7 @@ func (e *Endpoint) GetPageAccessibilityTree() ([]*proto.AccessibilityAXNode, err
 
 func (e *Endpoint) ScreenshotForLLM() (string, []*browserfactory.TaggedAccessibilityNode, error) {
 	b := e.browser
-	page := b.MustPage("https://www.wikipedia.org/").MustWindowFullscreen()
+	page := b.MustPage("https://ng.indeed.com/jobs?q=software%20engineer&l=&from=searchOnHP%2Cwhatautocomplete%2CwhatautocompleteSourceStandard").MustWindowFullscreen()
 
 	return e.browserClient.ScreenshotForLLM(page, "wikipedia.png")
 }
