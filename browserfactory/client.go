@@ -25,14 +25,6 @@ func (b *BrowserFactory) GetBrowser() *rod.Browser {
 	return b.browser
 }
 
-func (b *BrowserFactory) GetPageAccessibilityTree(page *rod.Page) ([]*proto.AccessibilityAXNode, error) {
-	res, err := proto.AccessibilityGetFullAXTree{}.Call(page)
-	if err != nil {
-		return nil, err
-	}
-	return res.Nodes, nil
-}
-
 func (b *BrowserFactory) ScreenshotForLLM(page *rod.Page, fileName string) (string, []*TaggedAccessibilityNode, error) {
 	screenshotPath := b.fs.ConcatenatePath(fileName)
 
@@ -41,7 +33,7 @@ func (b *BrowserFactory) ScreenshotForLLM(page *rod.Page, fileName string) (stri
 	err := rod.Try(func() {
 		page.MustWaitStable()
 		// Get the accessibility tree for the page
-		accessibilityTree, _ := b.GetPageAccessibilityTree(page)
+		accessibilityTree, _ := getPageAccessibilityTree(page)
 
 		// Draw transparent grid lines over the page
 		drawTransparentGrid(page)
@@ -57,6 +49,14 @@ func (b *BrowserFactory) ScreenshotForLLM(page *rod.Page, fileName string) (stri
 	}
 
 	return screenshotPath, taggedNodes, nil
+}
+
+func getPageAccessibilityTree(page *rod.Page) ([]*proto.AccessibilityAXNode, error) {
+	res, err := proto.AccessibilityGetFullAXTree{}.Call(page)
+	if err != nil {
+		return nil, err
+	}
+	return res.Nodes, nil
 }
 
 func drawTransparentGrid(page *rod.Page) {

@@ -1,12 +1,9 @@
 package fake
 
 import (
-	"fmt"
-
 	"github.com/SomtoJF/go-rod/browserfactory"
 	"github.com/SomtoJF/go-rod/initializers/fs"
 	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/proto"
 )
 
 type Endpoint struct {
@@ -22,20 +19,6 @@ func NewFakeEndpoint(bc browserfactory.BrowserClient, fs *fs.TemporaryFileSystem
 		fs:            fs,
 		browser:       b,
 	}
-}
-
-func (e *Endpoint) GetPageAccessibilityTree() ([]*proto.AccessibilityAXNode, error) {
-	b := e.browser
-	page := b.MustPage("https://www.wikipedia.org/").MustWindowFullscreen()
-
-	accessibilityTree, err := e.browserClient.GetPageAccessibilityTree(page)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println(accessibilityTree)
-
-	return accessibilityTree, nil
 }
 
 func (e *Endpoint) ScreenshotForLLM() (string, []*browserfactory.TaggedAccessibilityNode, error) {
