@@ -1,8 +1,6 @@
 package browserfactory
 
 import (
-	"fmt"
-
 	"github.com/SomtoJF/go-rod/initializers/fs"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
@@ -69,10 +67,77 @@ func (b *BrowserFactory) ScreenshotForLLM(page *rod.Page, fileName string) (stri
 }
 
 func tagAccessibilityNodes(page *rod.Page, accessibilityTree []*proto.AccessibilityAXNode) {
+	// Filter for focusable nodes with valid BackendDOMNodeID
+	var focusableNodes []*proto.AccessibilityAXNode
 	for _, node := range accessibilityTree {
-		page.MustEval(fmt.Sprintf(`() => {
-			const node = document.getElementById('%s');
-			node.style.border = '2px solid red';
-		}`, node.NodeID))
+		if !node.Ignored && isFocusable(node) && node.BackendDOMNodeID != 0 {
+			focusableNodes = append(focusableNodes, node)
+		}
+	}
+
+	// Inject tagging script for each focusable element
+	for i, node := range focusableNodes {
+		bounds := getNodeBounds(page, node)
+		if bounds != nil {
+			page.MustEval(`(x, y, w, h, i) => {
+				const tag = document.createElement('div');
+				tag.innerText = i;
+				tag.style = `+"`"+`
+					position: fixed;
+					left: ${x}px;
+					top: ${y}px;
+					background: #ff0000;
+					color: white;
+					padding: 2px 4px;
+					font-size: 10px;
+					font-weight: bold;
+					border-radius: 3px;
+					z-index: 1000000;
+					pointer-events: none;
+				`+"`"+`;
+				document.body.appendChild(tag);
+			}`, bounds.X, bounds.Y, bounds.Width, bounds.Height, i)
+		}
+	}
+}
+
+// isFocusable checks if node has focusable property set to true
+func isFocusable(node *proto.AccessibilityAXNode) bool {
+	if node.Properties == nil {
+		return false
+	}
+	for _, prop := range node.Properties {
+		if prop.Name == "focusable" && prop.Value != nil {
+			if prop.Value.Type == proto.AccessibilityAXValueTypeBoolean && prop.Value.Value.String() == "true" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// getNodeBounds retrieves element bounds using DOM.getBoxModel
+func getNodeBounds(page *rod.Page, node *proto.AccessibilityAXNode) *proto.DOMRect {
+	if node.BackendDOMNodeID == 0 {
+		return nil
+	}
+
+	res, err := proto.DOMGetBoxModel{BackendNodeID: node.BackendDOMNodeID}.Call(page)
+	if err != nil || res.Model == nil || len(res.Model.Border) < 4 {
+		return nil
+	}
+
+	// Model.Border is [x1, y1, x2, y2, x3, y3, x4, y4] - use top-left corner
+	x := res.Model.Border[0]
+	y := res.Model.Border[1]
+	// Calculate width/height from quad points
+	width := res.Model.Border[2] - res.Model.Border[0]   // x2 - x1
+	height := res.Model.Border[5] - res.Model.Border[1]  // y3 - y1
+
+	return &proto.DOMRect{
+		X:      x,
+		Y:      y,
+		Width:  width,
+		Height: height,
 	}
 }
