@@ -107,6 +107,8 @@ func tagAccessibilityNodes(page *rod.Page, accessibilityTree []*proto.Accessibil
 				`+"`"+`;
 				document.body.appendChild(tag);
 			}`, bounds.X, bounds.Y, bounds.Width, bounds.Height, i)
+		} else {
+			continue
 		}
 
 		taggedNodes = append(taggedNodes, &TaggedAccessibilityNode{
@@ -132,26 +134,36 @@ func isFocusable(node *proto.AccessibilityAXNode) bool {
 		}
 	}
 
+	interactiveRoles := map[string]bool{
+		"button":    true,
+		"link":      true,
+		"textbox":   true,
+		"checkbox":  true,
+		"radio":     true,
+		"combobox":  true,
+		"menuitem":  true,
+		"searchbox": true,
+		"switch":    true,
+		"slider":    true,
+		"tab":       true,
+		"option":    true,
+		"select":    true,
+		"textarea":  true,
+		"input":     true,
+	}
+
+	uninteractiveRoles := map[string]bool{
+		"rootwebarea": true,
+	}
+
 	// Fallback: check for interactive role
 	if node.Role != nil && !node.Role.Value.Nil() {
 		roleValue := strings.ToLower(node.Role.Value.String())
-		interactiveRoles := map[string]bool{
-			"button":    true,
-			"link":      true,
-			"textbox":   true,
-			"checkbox":  true,
-			"radio":     true,
-			"combobox":  true,
-			"menuitem":  true,
-			"searchbox": true,
-			"switch":    true,
-			"slider":    true,
-			"tab":       true,
-			"option":    true,
-			"select":    true,
-			"textarea":  true,
-			"input":     true,
+
+		if uninteractiveRoles[roleValue] {
+			return false
 		}
+
 		return interactiveRoles[roleValue]
 	}
 

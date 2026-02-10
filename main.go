@@ -34,7 +34,12 @@ func main() {
 		if node.Node.Value != nil && !node.Node.Value.Value.Nil() {
 			value = node.Node.Value.Value.String()
 		}
-		fmt.Printf("Name: %q, Role: %q, Value: %q, Index: %d\n", name, role, value, node.Index)
+		boundsStr := "nil"
+		if node.Bounds != nil {
+			boundsStr = fmt.Sprintf("{X: %.2f, Y: %.2f, Width: %.2f, Height: %.2f}", node.Bounds.X, node.Bounds.Y, node.Bounds.Width, node.Bounds.Height)
+		}
+		fmt.Printf("Name: %q, Role: %q, Value: %q, Index: %d, Bounds: %v\n", name, role, value, node.Index, boundsStr)
+
 	}
 
 	time.Sleep(1 * time.Hour)
