@@ -1,6 +1,7 @@
 package browserfactory
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/SomtoJF/go-rod/initializers/fs"
@@ -78,7 +79,7 @@ func tagAccessibilityNodes(page *rod.Page, accessibilityTree []*proto.Accessibil
 	// Filter for focusable nodes with valid BackendDOMNodeID
 	var focusableNodes []*proto.AccessibilityAXNode
 	for _, node := range accessibilityTree {
-		if !node.Ignored && isFocusable(node) && node.BackendDOMNodeID != 0 {
+		if !node.Ignored && isInteractive(node) && node.BackendDOMNodeID != 0 {
 			focusableNodes = append(focusableNodes, node)
 		}
 	}
@@ -112,20 +113,45 @@ func tagAccessibilityNodes(page *rod.Page, accessibilityTree []*proto.Accessibil
 		}
 
 		element := getElementFromNode(page, node)
+		description := getDescriptionFromNode(node, i)
+
+		fmt.Println("description: ", description)
 
 		taggedNodes = append(taggedNodes, &TaggedAccessibilityNode{
-			Node:    node,
-			Element: element,
-			Bounds:  bounds,
-			Index:   i,
+			Node:        node,
+			Element:     element,
+			Bounds:      bounds,
+			Index:       i,
+			Description: description,
 		})
 	}
 
 	return taggedNodes
 }
 
-// isFocusable checks if node has focusable property or interactive role
-func isFocusable(node *proto.AccessibilityAXNode) bool {
+func getDescriptionFromNode(node *proto.AccessibilityAXNode, index int) string {
+	name := ""
+	if node.Name != nil && !node.Name.Value.Nil() {
+		name = node.Name.Value.String()
+	}
+	role := ""
+	if node.Role != nil && !node.Role.Value.Nil() {
+		role = node.Role.Value.String()
+	}
+	value := ""
+	if v := node.Value; v != nil && !v.Value.Nil() {
+		value = v.Value.String()
+	}
+
+	desc := fmt.Sprintf("Tag %d: %s %s", index, name, role)
+	if value != "" {
+		desc += fmt.Sprintf(" with value %s", value)
+	}
+	return desc
+}
+
+// isInteractive checks if node has interactive role
+func isInteractive(node *proto.AccessibilityAXNode) bool {
 	// Check focusable property first
 	// if node.Properties != nil {
 	// 	for _, prop := range node.Properties {

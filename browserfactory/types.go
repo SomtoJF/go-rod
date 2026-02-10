@@ -12,8 +12,9 @@ type BrowserClient interface {
 }
 
 type TaggedAccessibilityNode struct {
-	Node    *proto.AccessibilityAXNode
-	Element *rod.Element
-	Bounds  *proto.DOMRect
-	Index   int
+	Node        *proto.AccessibilityAXNode
+	Element     *rod.Element
+	Bounds      *proto.DOMRect
+	Index       int
+	Description string
 }
