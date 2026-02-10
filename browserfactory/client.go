@@ -111,10 +111,13 @@ func tagAccessibilityNodes(page *rod.Page, accessibilityTree []*proto.Accessibil
 			continue
 		}
 
+		element := getElementFromNode(page, node)
+
 		taggedNodes = append(taggedNodes, &TaggedAccessibilityNode{
-			Node:   node,
-			Bounds: bounds,
-			Index:  i,
+			Node:    node,
+			Element: element,
+			Bounds:  bounds,
+			Index:   i,
 		})
 	}
 
@@ -194,4 +197,19 @@ func getNodeBounds(page *rod.Page, node *proto.AccessibilityAXNode) *proto.DOMRe
 		Width:  width,
 		Height: height,
 	}
+}
+
+func getElementFromNode(page *rod.Page, node *proto.AccessibilityAXNode) *rod.Element {
+	if node.BackendDOMNodeID == 0 {
+		return nil
+	}
+
+	el, err := page.ElementFromNode(&proto.DOMNode{
+		BackendNodeID: node.BackendDOMNodeID,
+	})
+	if err != nil {
+		return nil
+	}
+
+	return el
 }
